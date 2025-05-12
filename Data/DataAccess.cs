@@ -76,6 +76,7 @@ GO
 ALTER PROCEDURE dbo.AuthenticateUser
     @Login NVARCHAR(50),
     @Password NVARCHAR(50),
+    @LastLoginOut  DATETIME OUTPUT,
     @Result INT OUTPUT
 AS
 BEGIN
@@ -103,6 +104,8 @@ BEGIN
     IF @uid IS NULL BEGIN SET @Result = 1; RETURN; END
     IF @isBlocked = 1 BEGIN SET @Result = 2; RETURN; END
 
+    SET @LastLoginOut = @last;
+
     SET @hash = HASHBYTES('SHA2_512', @salt + CAST(@Password AS VARBINARY(MAX)));
     IF @hash <> @ph
     BEGIN
@@ -120,8 +123,11 @@ BEGIN
     END
 
     UPDATE dbo.Пользователи
-       SET FailedAttempts = 0,
-           LastLogin      = GETDATE()
+       SET FailedAttempts = 0
+     WHERE UserID = @uid;
+
+    UPDATE dbo.Пользователи
+       SET LastLogin = GETDATE()
      WHERE UserID = @uid;
 
     SET @Result = 0;
@@ -215,7 +221,7 @@ GO
       }
     }
 
-    public static int Authenticate(string login, string password)
+    public static (int Result, DateTime? LastLogin) Authenticate(string login, string password)
     {
       using (var conn = GetConnection())
       using (var cmd = new SqlCommand("dbo.AuthenticateUser", conn))
@@ -223,11 +229,26 @@ GO
         cmd.CommandType = CommandType.StoredProcedure;
         cmd.Parameters.AddWithValue("@Login", login);
         cmd.Parameters.AddWithValue("@Password", password);
-        var p = new SqlParameter("@Result", SqlDbType.Int)
-        { Direction = ParameterDirection.Output };
-        cmd.Parameters.Add(p);
+
+        var pLast = new SqlParameter("@LastLoginOut", SqlDbType.DateTime)
+        {
+          Direction = ParameterDirection.Output
+        };
+        cmd.Parameters.Add(pLast);
+
+        var pResult = new SqlParameter("@Result", SqlDbType.Int)
+        {
+          Direction = ParameterDirection.Output
+        };
+        cmd.Parameters.Add(pResult);
+
         cmd.ExecuteNonQuery();
-        return (int)p.Value;
+
+        DateTime? lastLogin = pLast.Value == DBNull.Value
+            ? (DateTime?)null
+            : (DateTime)pLast.Value;
+
+        return ((int)pResult.Value, lastLogin);
       }
     }
 

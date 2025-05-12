@@ -23,7 +23,7 @@ namespace AuthApp.Forms
         return;
       }
 
-      int result = DataAccess.Authenticate(login, password);
+      var (result, lastLogin) = DataAccess.Authenticate(login, password);
 
       if (result != 0)
       {
@@ -59,7 +59,7 @@ namespace AuthApp.Forms
       }
 
       // Если первый вход (LastLogin == null) — меняем пароль
-      if (user.LastLogin == null)
+      if (lastLogin == null)
       {
         MessageBox.Show("Первый вход — требуется смена пароля.", "Информация",
             MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -72,6 +72,8 @@ namespace AuthApp.Forms
               MessageBoxButtons.OK, MessageBoxIcon.Information);
           var adminForm = new AdminDashboard();
           adminForm.Show();
+          this.Hide();
+          return;
         }
         this.Close();
         return;
