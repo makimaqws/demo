@@ -1,0 +1,36 @@
+НАШ ВАРИАНТ
+если счиать что дома жильцы и  платежи разные таблицы "
+DECLARE @CurrentMonth DATE = DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1);
+
+SELECT 
+    CAST(COUNT(CASE WHEN p.PaymentDate <= p.DueDate THEN 1 END) * 100.0 / COUNT(DISTINCT r.ResidentID) AS DECIMAL(5,2)) AS TimelyPaymentPercent
+FROM 
+    Residents r
+LEFT JOIN 
+    Payments p ON r.ResidentID = p.ResidentID AND p.BillingMonth = @CurrentMonth
+WHERE 
+    r.HouseID = @HouseID; -- подставьте конкретный ID дома
+"
+
+вариант 1 смены 
+WITH WeeklyHours AS (
+SELECT
+e.EmployeeID,
+e.Name,
+e.WeeklyWorkHours,
+wl.ProjectID,
+SUM(wl.HoursWorked) AS ProjectHours
+FROM Employee e
+JOIN WorkLog wl ON e.EmployeeID = wl.EmployeeID
+WHERE wl.WorkDate BETWEEN '2025-05-05' AND '2025-05-11'  -- рабочая неделя
+GROUP BY e.EmployeeID, e.Name, e.WeeklyWorkHours, wl.ProjectID
+
+)
+SELECT
+wh.EmployeeID,
+wh.Name,
+wh.ProjectID,
+wh.ProjectHours,
+wh.WeeklyWorkHours,
+CAST(wh.ProjectHours * 100.0 / wh.WeeklyWorkHours AS DECIMAL(5,2)) AS LoadPercentage
+FROM WeeklyHours wh;
